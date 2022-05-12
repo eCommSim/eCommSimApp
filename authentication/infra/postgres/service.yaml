@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  # type: ClusterIP # use for production
+  type: LoadBalancer # use for testing
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+  selector:
+    app: postgres
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:12.4-alpine
+        ports:
+          - containerPort: 5432
+            name: postgres
+        envFrom:
+          - secretRef:
+              name: postgres-secrets
+          - configMapRef:
+              name: postgres-configmap  
+        volumeMounts:
+        - name: postgres-database-storage
+          mountPath: /var/lib/pgsql/data
+      volumes:
+      - name: postgres-database-storage
+        persistentVolumeClaim:
+          claimName: postgres-pv-claim
